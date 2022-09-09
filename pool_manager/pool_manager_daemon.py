@@ -123,7 +123,7 @@ class PoolManagerDaemon:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     sys.argv[1]
     with open(sys.argv[1]) as f:
         conf = json.load(f)

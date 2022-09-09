@@ -38,6 +38,8 @@ path = "pool_manager/__about__.py"
 dependencies = [
   "pytest",
   "pytest-cov",
+  "schedule",
+  "pandas"
 ]
 [tool.hatch.envs.default.scripts]
 cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=pool_manager --cov=tests"
