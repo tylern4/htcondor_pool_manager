@@ -1,0 +1,23 @@
+{
+    "time_add_worker_pool": 6,
+    "time_rm_worker_pool": 9,
+    "user_name": "tylern",
+    "wanted_columns": "ClusterId RequestMemory MemoryUsage RequestCpus RemoteSysCpu RemoteUserCpu JobStatus NumShadowStarts JobRunCount RemoteHost JobStartDate QDate",
+    "squeue_args": "",
+    "compute_types": [
+        "large"
+    ],
+    "clusters": {
+        "large": "perlmutter"
+    },
+    "min_pool": {
+        "large": 0
+    },
+    "max_pool": {
+        "large": 10
+    },
+    "worker_sizes": {
+        "large_cpu": 256,
+        "large_mem": 500
+    }
+}
