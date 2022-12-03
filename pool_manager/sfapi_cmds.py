@@ -93,23 +93,33 @@ class SFapiSlurm(Slurm):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
+    # logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
     slurm = SFapiSlurm(
         script_path='/global/homes/t/tylern/htcondor_workflow_scron'
     )
 
-    job = slurm.sbatch(compute_type='large')
-    print(job)
-    job = slurm.sbatch(compute_type='gpu')
-    print(job)
+    # job = slurm.sbatch(compute_type='large')
+    # print(job)
+    # job = slurm.sbatch(compute_type='gpu')
+    # print(job)
 
     squeue = slurm.squeue()
-    jobs = pd.DataFrame.from_dict(squeue)
+    print(squeue)
 
-    print("Wating 10s...")
-    time.sleep(10)
+    # print("Wating 10s...")
+    # time.sleep(10)
 
-    to_cancel = jobs[jobs['name'].str.contains('htcondor_worker')]
+    # to_cancel = jobs[jobs['name'].str.contains('htcondor_worker')]
 
-    for job_id in to_cancel['jobid']:
-        print(slurm.scancel(job_id=job_id))
+    # for job_id in to_cancel['jobid']:
+    #     print(slurm.scancel(job_id=job_id))
+    import sys
+    wait_time = 30*60
+    for remaining in range(wait_time, 0, -1):
+        sys.stdout.write("\r")
+        sys.stdout.write("{:2d} seconds remaining.".format(remaining))
+        sys.stdout.flush()
+        time.sleep(1)
+
+    squeue = slurm.squeue()
+    print(squeue)
