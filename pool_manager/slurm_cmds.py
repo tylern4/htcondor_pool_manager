@@ -6,6 +6,37 @@ import pandas as pd
 logger = logging.getLogger(__package__)
 
 
+def slurm_time_to_sec(time_str):
+    # split off days first
+    time_str = time_str.split("-")
+    if len(time_str) > 1:
+        days = int(time_str[0])
+    else:
+        days = 0
+
+    # split time_str into HH:MM:SS
+    time_str = time_str[-1].split(":")
+
+    time_str_bits = {0: 1, 1: 60, 2: 60 * 60, 3: 60 * 60 * 24}
+    total = 0
+    # Run in reverse becasue we will always
+    # have seconds and not always hours
+    # 0 -> sec
+    # 1 -> min
+    # 2 -> hrs.
+    # 3 -> days.
+    try:
+        for i, t in enumerate(time_str[::-1]):
+            total += (time_str_bits[i] * int(t))
+        if days > 0:
+            total += (time_str_bits[3] * int(days))
+        # Return total seconds
+        return total
+    except ValueError:
+        logging.warning("squeue returned an INVALID time")
+        return 0
+
+
 class SlurmError(Exception):
     pass
 
@@ -17,7 +48,7 @@ class SlurmCmdFailed(SlurmError):
 class Slurm:
     def __init__(
         self,
-        user_name: str = "jaws_jtm",
+        user_name: str = "",
         extra_args: str = None,
         script_path: str = "",
         **kwargs,
@@ -114,34 +145,3 @@ class Slurm:
         except SlurmCmdFailed:
             logging.error("sbatch failed")
             return {"stdout": "failed", "stderr": "failed", "returncode": 1}
-
-
-def slurm_time_to_sec(time_str):
-    # split off days first
-    time_str = time_str.split("-")
-    if len(time_str) > 1:
-        days = int(time_str[0])
-    else:
-        days = 0
-
-    # split time_str into HH:MM:SS
-    time_str = time_str[-1].split(":")
-
-    time_str_bits = {0: 1, 1: 60, 2: 60 * 60, 3: 60 * 60 * 24}
-    total = 0
-    # Run in reverse becasue we will always
-    # have seconds and not always hours
-    # 0 -> sec
-    # 1 -> min
-    # 2 -> hrs.
-    # 3 -> days.
-    try:
-        for i, t in enumerate(time_str[::-1]):
-            total += (time_str_bits[i] * int(t))
-        if days > 0:
-            total += (time_str_bits[3] * int(days))
-        # Return total seconds
-        return total
-    except ValueError:
-        logging.warning("squeue returned an INVALID time")
-        return 0
