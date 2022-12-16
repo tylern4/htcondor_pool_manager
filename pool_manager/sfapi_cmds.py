@@ -16,12 +16,23 @@ class SFapiCmdFailed(SFapiError):
 
 
 try:
-    from SuperfacilityAPI import SuperfacilityAPI, SuperfacilityAccessToken
+    from SuperfacilityAPI import SuperfacilityAPI, SuperfacilityAccessToken, error_warnings
 except ImportError:
     logging.error("Could not load SuperfacilityAPI")
 
 
 class SFapiSlurm(Slurm):
+    all_slurm_keys = ['account', 'tres_per_node', 'min_cpus', 'min_tmp_disk',
+                      'end_time', 'features', 'group', 'over_subscribe', 'jobid', 'name',
+                      'comment', 'time_limit', 'min_memory', 'req_nodes', 'command', 'priority',
+                      'qos', 'reason', '', 'st', 'user', 'reservation', 'wckey', 'exc_nodes', 'nice',
+                      's:c:t', 'exec_host', 'cpus', 'nodes', 'dependency', 'array_job_id',
+                      'sockets_per_node', 'cores_per_socket', 'threads_per_core', 'array_task_id',
+                      'time_left', 'time', 'nodelist', 'contiguous', 'partition', 'nodelist(reason)',
+                      'start_time', 'state', 'uid', 'submit_time', 'licenses', 'core_spec',
+                      'schednodes', 'work_dir'
+                      ]
+
     def __init__(
         self,
         user_name: str = "tylern",
@@ -41,11 +52,20 @@ class SFapiSlurm(Slurm):
         Runs the squeue command and returns a dictionary
         compatible with a pandas dataframe
         """
-        jobs = self.sfapi.get_jobs(
-            user=self.user_name,
-            site=self.site,
-            sacct=False
-        )
+        try:
+            jobs = self.sfapi.get_jobs(
+                user=self.user_name,
+                site=self.site,
+                sacct=False
+            )
+        except error_warnings.SuperfacilitySiteDown as err:
+            logger.debug(f"{err}")
+            df = pd.DataFrame(columns=self.all_slurm_keys)
+            return df.to_dict()
+
+        if len(jobs['output']) == 0:
+            df = pd.DataFrame(columns=self.all_slurm_keys)
+            return df.to_dict()
 
         df = pd.DataFrame.from_records(jobs['output'])
 
@@ -80,6 +100,8 @@ class SFapiSlurm(Slurm):
         except SFapiCmdFailed:
             logging.error("sbatch failed")
             return {"stdout": "failed", "stderr": "failed", "returncode": 1}
+        except SuperfacilityAPI.SuperfacilitySiteDown:
+            return {"stdout": "failed", "stderr": "failed", "returncode": 1}
 
         for i in range(wait_time):
             time.sleep(1)
@@ -93,9 +115,12 @@ class SFapiSlurm(Slurm):
 
 
 if __name__ == '__main__':
-    # logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
+    import sys
+    logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
     slurm = SFapiSlurm(
-        script_path='/global/homes/t/tylern/htcondor_workflow_scron'
+        script_path='/global/homes/t/tylern/htcondor_workflow_scron',
+        user_name='nmjaws',
+        site='cori'
     )
 
     # job = slurm.sbatch(compute_type='large')
@@ -104,17 +129,20 @@ if __name__ == '__main__':
     # print(job)
 
     squeue = slurm.squeue()
-    print(squeue)
 
-    # print("Wating 10s...")
-    # time.sleep(10)
+    jobs = pd.DataFrame.from_dict(squeue)
+    logging.debug("Wating 1s...")
+    time.sleep(1)
 
-    # to_cancel = jobs[jobs['name'].str.contains('htcondor_worker')]
+    to_cancel = {'jobid': []}
+    if len(jobs) > 0:
+        to_cancel = jobs[jobs['name'].str.contains('htcondor_worker')]
 
-    # for job_id in to_cancel['jobid']:
-    #     print(slurm.scancel(job_id=job_id))
-    import sys
-    wait_time = 30*60
+    for job_id in to_cancel['jobid']:
+        # ret = slurm.scancel(job_id=job_id)
+        logging.debug(json.dumps(job_id))
+
+    wait_time = 3
     for remaining in range(wait_time, 0, -1):
         sys.stdout.write("\r")
         sys.stdout.write("{:2d} seconds remaining.".format(remaining))
@@ -122,4 +150,4 @@ if __name__ == '__main__':
         time.sleep(1)
 
     squeue = slurm.squeue()
-    print(squeue)
+    print(json.dumps(squeue))
