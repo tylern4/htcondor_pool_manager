@@ -1,12 +1,11 @@
 
-import logging
 from typing import Dict, List
 
 import pandas as pd
 from slurm_cmds import SlurmCmdFailed
 import math
 
-logger = logging.getLogger(__package__)
+from loguru import logger
 
 
 class PoolManager:
@@ -45,19 +44,19 @@ class PoolManager:
             return slurm_status, pd.DataFrame([], columns=self.slurm_provider.columns)
 
         # Selections for running and pending
-        mask_pending = (df["STATE"] == "PENDING")
-        mask_running = (df["STATE"] == "RUNNING")
+        mask_pending = (df["state"] == "PENDING")
+        mask_running = (df["state"] == "RUNNING")
 
         # Selections for just condor jobs
         try:
-            mask_condor = df["NAME"].str.contains("condor")
+            mask_condor = df["name"].str.contains("htcondor_worker")
         except AttributeError:
-            logger.error("Problem with squeue output")
+            logger.error(f"Problem with squeue output {df}")
             return slurm_status, pd.DataFrame([], columns=self.slurm_provider.columns)
 
         # For sites with multiple types we want to know
         for compute_type in self.configs["compute_types"]:
-            mask_type = df["NAME"].str.contains(compute_type)
+            mask_type = df["name"].str.contains(compute_type)
             # Each of these selects for a certian type of node based on a set of masks
             # Add the number of nodes to get how many are in each catogory
             slurm_status[f"{compute_type}_pending"] = sum(
@@ -71,7 +70,7 @@ class PoolManager:
 
     def get_condor_job_queue(self) -> List:
         condor_jobs = self.condor_provider.condor_q()
-        logger.debug(f"HTCondor job status {condor_jobs}")
+        # logger.debug(f"HTCondor job status {condor_jobs}")
         return condor_jobs
 
     def determine_condor_job_sizes(self, condor_jobs: Dict) -> Dict:
@@ -250,10 +249,9 @@ class PoolManager:
             return None
 
         slurm_running_df.sort_values("TIME_SEC", inplace=True, ascending=False)
-
         # Any pending nodes are at the front of the list to remove
         # Gets the list of jobs IDs that are pending
-        pending = slurm_running_df[slurm_running_df.STATE == "PENDING"].JOBID
+        pending = slurm_running_df[slurm_running_df["state"] == "PENDING"].jobid
 
         num = 0
         # Loops over the pending job ids
@@ -285,16 +283,19 @@ class PoolManager:
             if num >= cleanup_num:
                 return True
             try:
-                node_mask = (slurm_running_df["NODELIST"] == node)
-                type_mask = slurm_running_df["NAME"].str.contains(compute_type)
+                node_mask = (slurm_running_df["nodelist"] == node)
+                type_mask = slurm_running_df["name"].str.contains(compute_type)
                 job_id = slurm_running_df[node_mask & type_mask]
-                job_id = int(job_id.JOBID)
+                job_id = int(job_id['jobid'])
                 logger.debug(f"JobID is {job_id}")
-            except IndexError:
+            except IndexError as err:
+                logger.warning(err)
                 continue
-            except TypeError:
+            except TypeError as err:
+                logger.warning(err)
                 continue
-            except AttributeError:
+            except AttributeError as err:
+                logger.warning(err)
                 continue
             num += 1
             logger.info(f"Removing idle node {node} with JobID {job_id}")

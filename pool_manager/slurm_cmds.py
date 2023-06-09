@@ -1,9 +1,6 @@
 from cmd_utils import run_command
-import logging
+from loguru import logger
 import pandas as pd
-
-
-logger = logging.getLogger(__package__)
 
 
 def slurm_time_to_sec(time_str):
@@ -33,7 +30,7 @@ def slurm_time_to_sec(time_str):
         # Return total seconds
         return total
     except ValueError:
-        logging.warning("squeue returned an INVALID time")
+        logger.warning("squeue returned an INVALID time")
         return 0
 
 
@@ -95,7 +92,7 @@ class Slurm:
         try:
             stdout, stderr, returncode = self.call_slurm_command(command)
         except SlurmCmdFailed:
-            logging.error("squeue failed")
+            logger.error("squeue failed")
             stdout = ""
 
         # Create an empty dataframe with the right columns if nothing was returned or an error
@@ -108,7 +105,7 @@ class Slurm:
         try:
             df = pd.DataFrame(jobs, columns=self.columns)
         except (AssertionError, ValueError):
-            logging.error(f'{jobs} mismatch {self.columns}')
+            logger.error(f'{jobs} mismatch {self.columns}')
             return pd.DataFrame([], columns=[*self.columns, 'TIME_SEC']).to_dict()
         # Drops rows if they have nan values
         df = df.dropna(axis=0)
@@ -129,7 +126,7 @@ class Slurm:
             stdout, stderr, returncode = self.call_slurm_command(command)
             return {"stdout": stdout, "stderr": stderr, "returncode": returncode}
         except SlurmCmdFailed:
-            logging.error("scancel failed")
+            logger.error("scancel failed")
             return {"stdout": "failed", "stderr": "failed", "returncode": 1}
 
     def sbatch(self, compute_type: str = "medium", cluster: str = ""):
@@ -143,5 +140,5 @@ class Slurm:
             stdout, stderr, returncode = self.call_slurm_command(command)
             return {"stdout": stdout, "stderr": stderr, "returncode": returncode}
         except SlurmCmdFailed:
-            logging.error("sbatch failed")
+            logger.error("sbatch failed")
             return {"stdout": "failed", "stderr": "failed", "returncode": 1}

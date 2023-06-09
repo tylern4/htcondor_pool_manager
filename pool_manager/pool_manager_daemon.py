@@ -7,14 +7,11 @@ from pathlib import Path
 import sys
 from pool_manager import PoolManager
 from htcondor_cmds import HTCondor
-from slurm_cmds import Slurm
+from sfapi_cmds import SFapiSlurm
 import schedule
 import time
-import logging
 import json
-
-
-logger = logging.getLogger(__package__)
+from loguru import logger
 
 
 def load_configs(configs):
@@ -77,7 +74,7 @@ class PoolManagerDaemon:
         """
         pool = PoolManager(
             condor_provider=HTCondor(columns=self.wanted_columns),
-            slurm_provider=Slurm(
+            slurm_provider=SFapiSlurm(
                 user_name=self.user_name,
                 extra_args=self.squeue_args,
                 script_path=self.script_path,
@@ -101,7 +98,7 @@ class PoolManagerDaemon:
         """
         pool = PoolManager(
             condor_provider=HTCondor(columns=self.wanted_columns),
-            slurm_provider=Slurm(
+            slurm_provider=SFapiSlurm(
                 user_name=self.user_name,
                 extra_args=self.squeue_args,
                 script_path=self.script_path,
@@ -118,12 +115,11 @@ class PoolManagerDaemon:
                 f"Looking to remove {abs(old_workers)} from {compute_type} pool"
             )
             if old_workers < 0:
-                pool.run_cleanup(slurm_running_df, abs(
-                    old_workers), compute_type)
+                pool.run_cleanup(slurm_running_df, abs(old_workers), compute_type)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.DEBUG)
     sys.argv[1]
     with open(sys.argv[1]) as f:
         conf = json.load(f)

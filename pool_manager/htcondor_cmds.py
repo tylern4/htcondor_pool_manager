@@ -1,11 +1,9 @@
 # from jaws_condor import config
 from typing import Dict, List
 from cmd_utils import run_command
-import logging
+from loguru import logger
 import pandas as pd
 import time
-
-logger = logging.getLogger(__package__)
 
 
 class HTCondorError(Exception):
@@ -28,7 +26,7 @@ class HTCondor:
             # get serialized and processed dataframe
             dataframe = process_condor_q(condor_jobs, self.condor_columns())
         except HTCondorCmdFailed as err:
-            logging.error(
+            logger.error(
                 f"{type(err).__name__} make sure condor is running and CONDOR_CONFIG is set properly"
             )
             dataframe = process_condor_q([], self.condor_columns())
@@ -42,7 +40,7 @@ class HTCondor:
             # Takes a list of lists to a single list
             idle = [item for sublist in idle_list for item in sublist]
         except HTCondorCmdFailed as err:
-            logging.error(
+            logger.error(
                 f"{type(err).__name__} make sure condor is running and CONDOR_CONFIG is set properly"
             )
             idle = []
